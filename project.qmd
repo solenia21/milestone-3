@@ -1,0 +1,95 @@
+---
+title: "NCAA Division 1 Softball Batting Averages"
+author: Solenia Suarez
+format: html
+execute:
+  echo: false
+---
+
+For my final data science project, I would like to analyze batting averages in NCAA Division I softball. I found a publicly available dataset from the SCORE Sports Data Repository that contains player batting statistics from 2020–2026. The datasets contain thousands of rows and 22 columns, including player names, teams, batting averages, hits, at-bats, home runs, and runs batted in. I plan to use these variables to compare players' batting averages and explore how batting performance differs between seasons. I am particularly interested in identifying the players with the highest averages for each season. I could create graphs to visualize these trends and use summary statistics to compare players and seasons. This project will help me develop my data analysis skills and learn more about performance trends in NCAA Division I softball.
+
+## Interactive Season Leaderboard (2020–2026)
+
+```{ojs}
+// Load the 2020-2026 batting dataset
+batting = FileAttachment("batting_stats.csv").csv({ typed: true })
+
+// Stat columns available to rank and plot
+statCols = [
+  "BA", "OBP", "SLG", "OPS", "GP", "PA", "AB",
+  "R", "H", "2B", "3B", "HR", "RBI", "HBP", "BB", "K", "SB", "CS"
+]
+
+// Interactive controls for season, statistic, and number of top players
+viewof selectedSeason = Inputs.select(
+  [2026, 2025, 2024, 2023, 2022, 2021, 2020],
+  { label: "Season", value: 2026, format: d => String(d) }
+)
+
+viewof selectedStat = Inputs.select(
+  statCols,
+  { label: "Statistic to Plot", value: "BA" }
+)
+
+viewof topN = Inputs.range(
+  [5, 50],
+  { label: "Top Players", step: 5, value: 15 }
+)
+```
+
+```{ojs}
+// Filter by season and sort descending by the chosen statistic
+topPlayers = batting
+  .filter(d => d.Season === selectedSeason && d[selectedStat] != null)
+  .sort((a, b) => d3.descending(+a[selectedStat], +b[selectedStat]))
+  .slice(0, topN)
+  .map((d, i) => ({
+    Rank: i + 1,
+    PlayerLabel: `${d.Player} (${d.Team})`,
+    ...d
+  }))
+
+// Bar chart of the top players for the selected season and statistic
+Plot.plot({
+  title: `Top ${topN} Players by ${selectedStat} (${selectedSeason} Season)`,
+  marginLeft: 220,
+  width: 780,
+  height: Math.max(300, topN * 26),
+  x: { label: selectedStat, grid: true },
+  y: { label: null },
+  marks: [
+    Plot.barX(topPlayers, {
+      x: selectedStat,
+      y: "PlayerLabel",
+      fill: "steelblue",
+      sort: { y: "-x" },
+      tip: true
+    }),
+    Plot.text(topPlayers, {
+      x: selectedStat,
+      y: "PlayerLabel",
+      text: d => ["BA", "OBP", "SLG", "OPS"].includes(selectedStat)
+        ? (+d[selectedStat]).toFixed(3)
+        : d[selectedStat],
+      dx: 6,
+      textAnchor: "start"
+    }),
+    Plot.ruleX([0])
+  ]
+})
+```
+
+### Player Statistics Across All Columns
+
+```{ojs}
+// Display all 22 columns for the top players in the selected season
+Inputs.table(topPlayers, {
+  columns: [
+    "Rank", "Player", "Team", "Class", "POS",
+    "BA", "OBP", "SLG", "OPS", "GP", "PA", "AB",
+    "R", "H", "2B", "3B", "HR", "RBI", "HBP", "BB", "K", "SB", "CS"
+  ],
+  rows: 20
+})
+```
+
